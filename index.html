@@ -12,7 +12,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=5">
 </head>
 
 <body>
@@ -181,15 +181,6 @@
             </svg>
         </div>
 
-        <!-- Character Illustration (SVG Sticker) -->
-        <div class="floating-element character" id="draggable-sticker">
-            <div class="float-inner">
-                <div class="character-sticker img-container">
-                    <img src="naruto.png" alt="Sticker Profile"
-                        style="width: 180px; height: auto; mix-blend-mode: multiply; filter: drop-shadow(0 8px 25px rgba(0,0,0,0.12));">
-                </div>
-            </div>
-        </div>
 
         <!-- Social Links Palette -->
         <div class="floating-element tools-palette" data-parallax="0.6">
@@ -283,9 +274,17 @@
                 <span class="sub-line">From aligning teams to shaping strategy, I turn complexity into structured
                     momentum.</span>
             </p> -->
-            <p class="hero-tagline">
-                <!-- <span class="tag-line">Clarity drives growth. <em>I design clarity.</em></span>
-            </p> -->
+
+        </div>
+
+        <!-- Character Illustration (Draggable Sticker) -->
+        <div class="floating-element character" id="draggable-sticker">
+            <div class="float-inner">
+                <div class="character-sticker img-container">
+                    <img src="naruto.png" alt="Sticker Profile"
+                        style="width: 180px; height: auto; mix-blend-mode: multiply; filter: drop-shadow(0 8px 25px rgba(0,0,0,0.12));">
+                </div>
+            </div>
         </div>
 
         <!-- Section Route Pills (replacing avatar group) -->
@@ -329,7 +328,7 @@
         </div>
 
         <!-- Thinking text -->
-        <div class="thinking-text">
+        <div class="thinking-text" id="tagline-reveal">
             <span>Clarity drives growth. <em>I design clarity.</em></span>
         </div>
 
@@ -344,7 +343,27 @@
         <span>Made in Framer</span>
     </div> -->
 
-    <script src="script.js?v=2"></script>
+    <!-- Failsafe: force pointer-events and z-index via JS to bypass any CSS caching -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var hc = document.querySelector('.hero-content');
+            if (hc) {
+                hc.style.pointerEvents = 'none';
+                hc.style.userSelect = 'none';
+            }
+            var sticker = document.getElementById('draggable-sticker');
+            if (sticker) {
+                sticker.style.zIndex = '10';
+                sticker.style.position = 'absolute';
+                sticker.style.pointerEvents = 'auto';
+            }
+            // Re-enable pointer events on interactive hero children
+            document.querySelectorAll('.hero-content a, .hero-content button, .route-pill').forEach(function (el) {
+                el.style.pointerEvents = 'auto';
+            });
+        });
+    </script>
+    <script src="script.js?v=6"></script>
 </body>
 
 </html>

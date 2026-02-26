@@ -72,206 +72,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ========== DRAGGABLE STICKER WITH 3D TILT ==========
+    // ========== STICKER CLICK ANIMATION ==========
     const character = document.getElementById('draggable-sticker');
     if (character) {
         const sticker = character.querySelector('.character-sticker');
-        const stickerImg = character.querySelector('img');
         const floatInner = character.querySelector('.float-inner');
-        let isDragging = false;
-        let dragStartX, dragStartY;
-        let offsetX = 0, offsetY = 0;
-        let prevX = 0, prevY = 0;
-        let prevTime = 0;
-        let lastVX = 0, lastVY = 0;
-        let inertiaRAF = null;
-        let minX = -Infinity, maxX = Infinity, minY = -Infinity, maxY = Infinity;
+        const tagline = document.getElementById('tagline-reveal');
+        let hasRevealed = false;
 
-        // Prevent default image drag behavior
-        if (stickerImg) {
-            stickerImg.setAttribute('draggable', 'false');
-            stickerImg.style.pointerEvents = 'none';
+        character.style.cursor = 'pointer';
+
+        // Use document-level click with hit testing to bypass stacking context
+        function isClickOnSticker(e) {
+            const rect = character.getBoundingClientRect();
+            return e.clientX >= rect.left && e.clientX <= rect.right &&
+                e.clientY >= rect.top && e.clientY <= rect.bottom;
         }
 
-        character.style.cursor = 'grab';
-        character.style.userSelect = 'none';
-        character.style.webkitUserSelect = 'none';
-        character.style.touchAction = 'none';
-
-        const saved = localStorage.getItem('stickerPos');
-        if (saved) {
-            try {
-                const p = JSON.parse(saved);
-                if (typeof p.x === 'number' && typeof p.y === 'number') {
-                    offsetX = p.x;
-                    offsetY = p.y;
-                    character.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-                }
-            } catch {}
-        }
-
-        character.addEventListener('mousedown', startDrag);
-        character.addEventListener('touchstart', startDrag, { passive: false });
-        character.addEventListener('dblclick', () => {
-            offsetX = 0;
-            offsetY = 0;
-            character.style.transition = '';
-            character.style.transform = '';
-            localStorage.removeItem('stickerPos');
-        });
-
-        function startDrag(e) {
+        document.addEventListener('click', function (e) {
+            if (!isClickOnSticker(e)) return;
             e.preventDefault();
             e.stopPropagation();
-            isDragging = true;
 
-            const point = e.touches ? e.touches[0] : e;
-            dragStartX = point.clientX - offsetX;
-            dragStartY = point.clientY - offsetY;
-            prevX = point.clientX;
-            prevY = point.clientY;
-            prevTime = performance.now();
-            cancelInertia();
-            computeBounds();
+            // Bounce animation on sticker
+            sticker.style.transition = 'transform 0.15s ease';
+            sticker.style.transform = 'scale(1.25) rotate(-8deg)';
+            sticker.style.filter = 'drop-shadow(0 20px 40px rgba(0,0,0,0.25))';
 
-            // Lift effect
-            character.style.cursor = 'grabbing';
-            document.body.style.cursor = 'grabbing';
-            character.style.zIndex = '50';
-            floatInner.style.animation = 'none';
-            sticker.style.transition = 'filter 0.15s ease, transform 0.15s ease';
-            sticker.style.filter = 'drop-shadow(0 25px 50px rgba(0,0,0,0.3))';
-            sticker.style.transform = 'scale(1.12)';
+            setTimeout(() => {
+                sticker.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease';
+                sticker.style.transform = 'scale(1) rotate(0deg)';
+                sticker.style.filter = '';
+            }, 150);
 
-            document.addEventListener('mousemove', moveDrag);
-            document.addEventListener('mouseup', endDrag);
-            document.addEventListener('touchmove', moveDrag, { passive: false });
-            document.addEventListener('touchend', endDrag);
-        }
+            // Burst emoji particles
+            const emojis = ['✨', '⚡', '🔥', '💫', '🍥', '🌀'];
+            emojis.forEach((emoji, i) => {
+                createParticle(character, emoji, i, emojis.length);
+            });
 
-        function moveDrag(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-
-            const point = e.touches ? e.touches[0] : e;
-            offsetX = point.clientX - dragStartX;
-            offsetY = point.clientY - dragStartY;
-            if (minX > -Infinity) {
-                offsetX = Math.max(minX, Math.min(maxX, offsetX));
-                offsetY = Math.max(minY, Math.min(maxY, offsetY));
+            // Reveal tagline on first click
+            if (!hasRevealed && tagline) {
+                hasRevealed = true;
+                setTimeout(() => {
+                    tagline.style.opacity = '1';
+                    tagline.style.transform = 'translateY(0)';
+                }, 300);
             }
-
-            // Velocity for 3D tilt
-            const now = performance.now();
-            const dt = Math.max(now - prevTime, 1);
-            const vx = (point.clientX - prevX) / dt;
-            const vy = (point.clientY - prevY) / dt;
-            prevX = point.clientX;
-            prevY = point.clientY;
-            prevTime = now;
-            lastVX = vx;
-            lastVY = vy;
-
-            const tiltY = Math.max(-30, Math.min(30, vx * 35));
-            const tiltX = Math.max(-30, Math.min(30, -vy * 35));
-            const speed = Math.min(1, Math.sqrt(vx * vx + vy * vy) * 2);
-            const shadow = 12 + speed * 28;
-
-            character.style.transition = 'none';
-            character.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            sticker.style.transition = 'none';
-            sticker.style.transform = `scale(1.12) perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-            sticker.style.filter = `drop-shadow(0 ${shadow}px ${shadow * 1.6}px rgba(0,0,0,0.3))`;
-        }
-
-        function endDrag() {
-            if (!isDragging) return;
-            isDragging = false;
-
-            document.removeEventListener('mousemove', moveDrag);
-            document.removeEventListener('mouseup', endDrag);
-            document.removeEventListener('touchmove', moveDrag);
-            document.removeEventListener('touchend', endDrag);
-
-            character.style.cursor = 'grab';
-            document.body.style.cursor = '';
-            startInertia();
-            localStorage.setItem('stickerPos', JSON.stringify({ x: offsetX, y: offsetY }));
-        }
-
-        function startInertia() {
-            let vx = lastVX * 120;
-            let vy = lastVY * 120;
-            const friction = 0.92;
-            const minSpeed = 0.5;
-            cancelInertia();
-            inertiaRAF = requestAnimationFrame(step);
-            function step() {
-                vx *= friction;
-                vy *= friction;
-                offsetX += vx;
-                offsetY += vy;
-                if (minX > -Infinity) {
-                    if (offsetX < minX) {
-                        offsetX = minX;
-                        vx = -vx * 0.4;
-                    } else if (offsetX > maxX) {
-                        offsetX = maxX;
-                        vx = -vx * 0.4;
-                    }
-                    if (offsetY < minY) {
-                        offsetY = minY;
-                        vy = -vy * 0.4;
-                    } else if (offsetY > maxY) {
-                        offsetY = maxY;
-                        vy = -vy * 0.4;
-                    }
-                }
-                character.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-                const s = Math.min(1, Math.sqrt(vx * vx + vy * vy) / 100);
-                const shadow = 12 + s * 28;
-                const tiltY = Math.max(-15, Math.min(15, vx / 12));
-                const tiltX = Math.max(-15, Math.min(15, -vy / 12));
-                sticker.style.transition = 'none';
-                sticker.style.transform = `scale(1.06) perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-                sticker.style.filter = `drop-shadow(0 ${shadow}px ${shadow * 1.6}px rgba(0,0,0,0.28))`;
-                if (Math.abs(vx) > minSpeed || Math.abs(vy) > minSpeed) {
-                    inertiaRAF = requestAnimationFrame(step);
-                } else {
-                    sticker.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                    sticker.style.transform = '';
-                    sticker.style.filter = '';
-                    floatInner.style.animation = '';
-                    character.style.zIndex = '5';
-                    character.style.transition = '';
-                    localStorage.setItem('stickerPos', JSON.stringify({ x: offsetX, y: offsetY }));
-                }
-            }
-        }
-
-        function cancelInertia() {
-            if (inertiaRAF) {
-                cancelAnimationFrame(inertiaRAF);
-                inertiaRAF = null;
-            }
-        }
-
-        function computeBounds() {
-            const rect = character.getBoundingClientRect();
-            const margin = 8;
-            minX = -rect.left + margin;
-            maxX = window.innerWidth - rect.right - margin;
-            minY = -rect.top + margin;
-            maxY = window.innerHeight - rect.bottom - margin;
-        }
-
-        window.addEventListener('resize', () => {
-            computeBounds();
-            offsetX = Math.max(minX, Math.min(maxX, offsetX));
-            offsetY = Math.max(minY, Math.min(maxY, offsetY));
-            character.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-            localStorage.setItem('stickerPos', JSON.stringify({ x: offsetX, y: offsetY }));
-        }
+        }, true);
     }
 
     function createParticle(parent, emoji, index, total) {
